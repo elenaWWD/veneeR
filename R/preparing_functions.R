@@ -1,0 +1,473 @@
+
+##### 1 noise removal: ####
+
+#' Remove Noise and Outliers from Tree LiDAR Data
+#'
+#' This function processes LiDAR data from a tree scan by filtering out low-verticality points, 
+#' high-planarity points, and neighbor noise, and by removing outliers in the X, Y, and Z dimensions.
+#' It also resets the Z coordinates using the original Z reference data.
+#'
+#' @param tree_las A LAS object representing a tree scan. The object must include `Verticality`, `Planarity`, and `Zref` attributes.
+#' @return A LAS object with noise and outlier points removed.
+#' @examples
+#' # Assuming 'tree_las' is a valid LAS object with Verticality, Planarity, and Zref attributes:
+#' clean_tree <- veneer_noise(tree_las)
+#' @export
+#' 
+#' @import lidR 
+#' @import CspStandSegmentation 
+#' @import tidyr
+
+#' 
+veneer_noise <- function(tree_las) {
+  
+  # Add geometry metrics to the LAS data if not already present
+  tls_all <- add_geometry(tree_las)
+  
+  # Apply filters: keep only points with high verticality and planarity, and remove classified noise
+  tls_all <- tls_all %>%
+    filter_poi(Verticality > 0.85) %>%
+    filter_poi(Planarity > 0.4) %>%
+    classify_noise(ivf(0.1, 6)) %>%
+    filter_poi(Classification != LASNOISE)
+  
+  # Restore Z to its original value and normalize to start from zero
+  tls_all@data$Z <- tls_all@data$Zref - min(tls_all@data$Zref)
+  
+  # Identify and filter outliers in the X and Y dimensions
+  x_outliers <- tls_all@data$X %in% boxplot(tls_all@data$X, plot = FALSE)$out
+  y_outliers <- tls_all@data$Y %in% boxplot(tls_all@data$Y, plot = FALSE)$out
+  tls_all <- tls_all[!(x_outliers | y_outliers), ]
+  
+  # Optionally filter by CBH if final_tree_information exists
+  if (exists("final_tree_information") && "cbh" %in% names(final_tree_information)) {
+    tls_all <- tls_all[which(tls_all@data$Z < final_tree_information$cbh), ]
+  }
+  
+  return(tls_all)
+}
+
+
+##### 2 correct stem inclination: ####
+
+#' Correct Tree Inclination Using Stem Axis
+#'
+#' This function estimates and corrects the inclination of a tree point cloud by aligning it to a new coordinate system 
+#' based on the tree's stem axis. It also provides a 2D plot comparison of original and corrected inclination.
+#'
+#' @param tree_f A LAS object containing tree scan data with `X`, `Y`, and `Z` coordinates.
+#' @param plot Logical, if `TRUE`, generates and saves a 2D plot comparison of the original and corrected inclination.
+#' @return A LAS object with inclination-corrected coordinates (`X_cor`, `Y_cor`, `Z_cor`).
+#' @examples
+#' # Assuming 'tree_f' is a valid LAS object:
+#' corrected_tree <- veneer_incli(tree_f, plot = TRUE)
+#' @export
+#' @import ggplot2
+#' @import viridis
+
+
+veneer_incli <- function(tree_f, plot = TRUE) {
+  
+  # Extract and normalize point coordinates
+  points <- as.matrix(tree_f@data[, c("X", "Y", "Z")])
+  points <- sweep(points, 2, apply(points, 2, min))
+  
+  # Estimate stem direction using bottom and top sections of the tree
+  tree_height <- max(points[,3])
+  bottom_points <- points[points[,3] < 0.1 * tree_height, ]
+  top_points <- points[points[,3] > 0.8 * tree_height & points[,3] < tree_height, ]
+  
+  # Calculate stem axis vector
+  stem_axis <- colMeans(top_points) - colMeans(bottom_points)
+  stem_axis <- stem_axis / sqrt(sum(stem_axis^2))
+  
+  # Define orthogonal vectors for the rotation matrix
+  vec_orth <- c(0, -stem_axis[3], stem_axis[2])
+  vec_norm <- c(
+    vec_orth[2] * stem_axis[3] - vec_orth[3] * stem_axis[2],
+    vec_orth[3] * stem_axis[1] - vec_orth[1] * stem_axis[3],
+    vec_orth[1] * stem_axis[2] - vec_orth[2] * stem_axis[1]
+  )
+  
+  # Normalize auxiliary vectors
+  vec_orth <- vec_orth / sqrt(sum(vec_orth^2))
+  vec_norm <- vec_norm / sqrt(sum(vec_norm^2))
+  
+  # Arrange rotation matrix
+  rotation_matrix <- rbind(vec_norm, vec_orth, stem_axis)
+  
+  # Rotate each point in the dataset
+  rotated_points <- t(rotation_matrix %*% t(points))
+  
+  # Generate and save plots if requested
+  if (plot) {
+    plot_data <- data.frame(
+      X = points[,1], Y = points[,2], Z = points[,3],
+      X_rot = rotated_points[,1] - mean(tree_f@data$X), 
+      Y_rot = rotated_points[,2] - mean(tree_f@data$Y), 
+      Z_rot = rotated_points[,3]
+    )
+    
+    p1 <- ggplot(plot_data, aes(x = X, y = Y, color = Z)) +
+      geom_point(pch = ".") +
+      labs(title = "Uncorrected Inclination", x = "X (m)", y = "Y (m)", color = "Z (m)") +
+      theme_bw() + scale_color_viridis(option = "A")
+    
+    p2 <- ggplot(plot_data, aes(x = X_rot, y = Y_rot, color = Z_rot)) +
+      geom_point(pch = ".") +
+      labs(title = "Corrected Inclination", x = "X (m)", y = "Y (m)", color = "Z (m)") +
+      theme_bw() + scale_color_viridis(option = "A")
+    
+    ggpubr::ggarrange(p1, p2, labels = "AUTO", common.legend = TRUE, legend = "bottom", nrow = 1)
+    ggsave("Inclination_correction_comparison.png", width = 8, height = 4)
+  }
+  
+  # Update tree data with corrected coordinates
+  tree_f@data$X_cor <- rotated_points[, 1]
+  tree_f@data$Y_cor <- rotated_points[, 2]
+  tree_f@data$Z_cor <- rotated_points[, 3] - min(rotated_points[, 3])
+  
+  # Save rotation matrix and offset details
+  offset_min <- c("x" = min(tree_f@data$X), "y" = min(tree_f@data$Y))
+  offset_z <- c("z" = min(rotated_points[, 3]))
+  saveRDS(list(offset_min, offset_z, rotation_matrix), file = "rotation_stuff.rds")
+  
+  return(tree_f)
+}
+
+##### 3 fit multiple circles along the stem height ####
+#' Fit RANSAC Circles to Tree Point Cloud Data and Calculate Radii Metrics
+#'
+#' This function uses RANSAC to fit circles to stem slices and calculates several radius-related metrics, 
+#' such as the convex hull area, circle area, and bark thickness, at different stem heights.
+#'
+#' @param tree_f A LAS object containing tree scan data, with `Z_cor`, `X_cor`, and `Y_cor` coordinates.
+#' @param steps Numeric, the step size for slicing the stem along the Z-axis (e.g., 0.05 for 5 cm steps).
+#' @param species Character, species name used to calculate bark thickness (e.g., "FaSy").
+#' @return A data.frame with calculated radii and other metrics at different stem heights.
+#' @examples
+#' # Assuming 'tree_f' is a valid LAS object:
+#' radii_metrics <- veneer_ransac(tree_f, steps = 0.05, species = "FaSy")
+#' @export
+#' @import TreeLS
+#' @import sp
+
+veneer_ransac <- function(tree_f, steps, species) {
+  
+  # Initialize empty data frame to store results
+  radii <- data.frame(
+    Z = numeric(), R = numeric(), X = numeric(), Y = numeric(),
+    chull.area = numeric(), circle.area = numeric(),
+    proportion_circle_hull = numeric(), raw.x = numeric(), 
+    raw.y = numeric(), bark = numeric()
+  )
+  
+  # Counter for results
+  i <- 1
+  
+  # Loop through stem heights with the specified step size
+  for (z in seq(min(tree_f@data$Z_cor) + 0.01, max(tree_f@data$Z_cor), steps)) {
+    
+    # Extract slice of points around the current height z
+    disc <- filter_poi(tree_f, Z_cor > (z - steps / 2), Z_cor < (z + steps / 2))
+    
+    # Continue only if enough points are available for circle fitting
+    if (length(disc@data$X_cor) > 5) {
+      
+      disc@data$X <- disc@data$X_cor
+      disc@data$Y <- disc@data$Y_cor
+      disc@data$Z <- disc@data$Z_cor
+      
+      # Fit circle to the current slice using RANSAC
+      circ <- shapeFit(disc, shape = "circle", algorithm = "ransac")
+      
+      if (!is.na(circ[1, 3])) {
+        
+        # Store the circle's radius and other calculated metrics
+        radii[i, ] <- c(
+          z, circ[1, 3], circ[1, 1], circ[1, 2], NA, NA, NA,
+          mean(disc@data$X), mean(disc@data$Y), NA
+        )
+        
+        # Calculate bark thickness for the given species (if applicable)
+        if (species == "FaSy") {
+          radii$bark[i] <- 2.61029 + 0.28522 * radii$R[i] * 200
+        }
+        
+        # Perform outlier detection using boxplot
+        disc_df <- data.frame(disc@data[, 1:3])
+        disc_df$znew <- z
+        
+        # Remove X and Y outliers using boxplot.stats
+        disc_o <- remove_outliers(disc_df)
+        
+        # Calculate convex hull
+        chull_pts <- chull(disc_o[, c(1, 2, 4)])
+        chull_pts <- c(chull_pts, chull_pts[1])  # Close the polygon
+        disc_hull <- disc_o[chull_pts, ]
+        chull.poly <- Polygon(disc_hull[, c(1, 2)], hole = FALSE)
+        
+        # Store convex hull area and circle area metrics
+        radii[i, 5] <- chull.poly@area
+        radii[i, 6] <- pi * radii$R[i]^2
+        radii[i, 7] <- radii[i, 5] / radii[i, 6]  # Proportion of hull area to circle area
+        
+        # Move to the next iteration
+        i <- i + 1
+      }
+    }
+  }
+  
+  # Update final tree information (e.g., radius at various heights)
+  update_tree_info(radii, species)
+  
+  return(radii)
+}
+
+# Helper function to remove outliers based on boxplot stats
+remove_outliers <- function(disc_df) {
+  # Outlier removal for X and Y
+  out_x <- boxplot.stats(disc_df$X)$out
+  out_x_ind <- which(disc_df$X %in% out_x)
+  disc_o <- if (length(out_x_ind) != 0) disc_df[-out_x_ind, ] else disc_df
+  
+  out_y <- boxplot.stats(disc_o$Y)$out
+  out_y_ind <- which(disc_o$Y %in% out_y)
+  if (length(out_y_ind) != 0) disc_o <- disc_o[-out_y_ind, ]
+  
+  return(disc_o)
+}
+
+# Helper function to update the final tree information
+update_tree_info <- function(radii, species) {
+  final_tree_information$radius_ransac_at_bh <- round(mean(radii$R[radii$Z > 1 & radii$Z < 1.5], na.rm = TRUE), 4)
+  final_tree_information$radius_ransac_at_cbh <- round(mean(radii$R[radii$Z > 0.9 * final_tree_information$cbh], na.rm = TRUE), 4)
+  
+  # Mitten diameter calculation
+  final_tree_information$mitten_diameter <- mean(radii$R[radii$Z > 0.9 * ((max(radii$Z) - min(radii$Z)) / 2) & radii$Z < 1.1 * ((max(radii$Z) - min(radii$Z)) / 2)], na.rm = TRUE)
+  
+  # Radius at various stem heights
+  if (final_tree_information$tree_height > 6) final_tree_information$radius_ransac_at_5 <- round(mean(radii$R[radii$Z > 4.5 & radii$Z < 5.5], na.rm = TRUE), 4)
+  if (final_tree_information$tree_height > 10) final_tree_information$radius_ransac_at_10 <- round(mean(radii$R[radii$Z > 9.5 & radii$Z < 10.5], na.rm = TRUE), 4)
+  if (final_tree_information$tree_height > 15) final_tree_information$radius_ransac_at_15 <- round(mean(radii$R[radii$Z > 14.5 & radii$Z < 15.5], na.rm = TRUE), 4)
+  if (final_tree_information$tree_height > 20) final_tree_information$radius_ransac_at_20 <- round(mean(radii$R[radii$Z > 19.5 & radii$Z < 20.5], na.rm = TRUE), 4)
+  
+  # Clean up tree if not valid
+  if (is.na(final_tree_information$radius_ransac_at_bh)) {
+    rm(tree_f, tls_all)
+    write.csv(final_tree_information, "final_tree_information.csv")
+    gc()  # Clean up memory
+  }
+  if (is.na(final_tree_information$radius_ransac_at_bh)) next
+  if ((final_tree_information$cbh - 0.3) < 1.8288) {
+    rm(tree_f, tls_all)
+    write.csv(final_tree_information, "final_tree_information.csv")
+    gc()
+  }
+}
+
+
+##### 3.1 outlier detection based on splines for axis along tree height:##### 
+#' Detect and Remove Outliers from Tree Point Cloud Data
+#'
+#' This function detects outliers based on distance from a fitted spline to the points in a tree's point cloud data.
+#'
+#' @param radii A data.frame with calculated radii, X, Y, Z values, and other metrics.
+#' @param tree_f A LAS object containing tree scan data, with coordinates (X_cor, Y_cor, Z_cor).
+#' @param steps Numeric, the step size for slicing the stem along the Z-axis.
+#' @return A LAS object with outliers removed based on calculated distance deviations.
+#' @examples
+#' # Assuming 'tree_f' is a valid LAS object and 'radii' is computed:
+#' tree_f_cleaned <- veneer_outlier(radii, tree_f, steps = 0.05)
+#' @export
+#' @import ggpubr
+
+veneer_outlier <- function(radii, tree_f, steps) {
+  
+  # Smooth splines for X and Y coordinates based on Z
+  new_x <- smooth.spline(x = radii$Z, y = radii$X, nknots = 10)
+  new_y <- smooth.spline(x = radii$Z, y = radii$Y, nknots = 10)
+  
+  radii$X_spline <- predict(new_x, newdata = radii$Z)$y
+  radii$Y_spline <- predict(new_y, newdata = radii$Z)$y
+  
+  # Initialize columns in tree_f data
+  tree_f@data$dist <- NA
+  tree_f@data$diff_dist <- NA
+  tree_f@data$diff_dist_raus <- FALSE
+  
+  # Loop over unique Z values in the radii dataset to calculate distances
+  for (radii_z in unique(radii$Z)) {
+    rz = radii [which(radii$Z == radii_z),]
+    cc_x = rz$X 
+    cc_y = rz$Y
+    dist=c()
+    
+    tree_f_sub = tree_f@data[which(tree_f@data$Z_cor>= radii_z & tree_f@data$Z_cor < radii_z+ steps ),]
+    for (i in 1:nrow(tree_f_sub))  dist[i] =  dist(rbind(cbind(cc_x, cc_y), cbind(tree_f_sub$X_cor[i], tree_f_sub$Y_cor[i])))
+    
+    tree_f@data$dist      [which(tree_f@data$Z_cor>= radii_z & tree_f@data$Z_cor < radii_z+ steps )] = dist
+    tree_f@data$diff_dist [which(tree_f@data$Z_cor>= radii_z & tree_f@data$Z_cor < radii_z+ steps )] = dist - rz$R
+    
+    
+  }
+  
+  
+  # Mark outliers where the difference in distance exceeds a threshold
+  tree_f@data$diff_dist_raus <- tree_f@data$diff_dist > 0.1
+  
+  
+  # Plot outlier detection results
+  a <- ggplot(tree_f@data) + 
+    geom_point(aes(x = X_cor, y = Y_cor, col = diff_dist_raus), alpha = 0.3) + 
+    theme_minimal()
+  
+  b <- ggplot(tree_f@data) + 
+    geom_point(aes(x = X_cor, y = Z_cor, col = diff_dist_raus), alpha = 0.3) + 
+    theme_minimal()
+  
+  c <- ggplot(tree_f@data) + 
+    geom_point(aes(x = Y_cor, y = Z_cor, col = diff_dist_raus), alpha = 0.3) + 
+    theme_minimal()
+  
+  ggarrange(a, b, c, ncol = 3, common.legend = TRUE, legend = "bottom")
+  
+  # Save the plot
+  ggsave("fine_outlier_detection.png", width = 10, height = 4)
+  
+  # Remove outliers from the tree_f data
+  tree_f = tree_f[which(tree_f@data$diff_dist_raus==F),]
+  
+  return(tree_f)
+}
+
+
+##### 4 cardinal directions: ####
+
+#' Compute Cardinal Directions for Tree Points with Optional Radii Recalculation
+#'
+#' This function calculates the cardinal directions (e.g., N, NE, E, etc.) for each point along a tree's trunk 
+#' based on 3D coordinates and radii information. If the tree scan is incomplete, additional points are generated 
+#' using circular fit radii. The function can generate both 2D and 3D plots of the calculated cardinal directions.
+#'
+#' @param tree_f A `LAS` object or similar, containing 3D coordinates (`X_cor`, `Y_cor`, and `Z_cor`) of tree points.
+#' @param radii A data frame containing radii information for calculating tree circular fits. Must contain columns `Z`, `X`, and `Y`.
+#' @param steps Numeric, the height interval step (in meters) for computing directions along the tree (default is `0.05`).
+#' @param plot2d Logical, if `TRUE`, generates a 2D plot of the cardinal directions (default is `TRUE`).
+#' @param plot3d Logical, if `TRUE`, generates a 3D plot of the cardinal directions (default is `TRUE`).
+#' @return Data frame with updated `car_ang` (angle) and `car_dir` (direction) columns for each point.
+#'         If necessary, points are interpolated to fill gaps in tree data.
+#'
+#' @details This function checks whether radii need recalculating based on the scan completeness.
+#'          It assigns a cardinal direction to each point based on its position relative to the tree center at each height layer.
+#' 
+#' @importFrom ggplot2 ggplot aes geom_point ggtitle theme_bw
+#' @importFrom plotly plot_ly add_trace layout
+#' @importFrom plyr rbind.fill
+#' @importFrom conicfit calculateCircle
+#' @importFrom viridis magma
+#' @importFrom htmlwidgets saveWidget
+
+#' @export
+#' @examples
+#' \dontrun{
+#' # Example usage:
+#' tree_data <- readLAS("path/to/tree_points.las")
+#' radii_data <- data.frame(Z = seq(0, 10, 0.5), X = runif(20), Y = runif(20))
+#' veneer_card(tree_f = tree_data, radii = radii_data, plot2d = TRUE, plot3d = TRUE)
+#' }
+#' 
+
+veneer_card <- function(tree_f, radii, steps = 0.05, plot2d = TRUE, plot3d = TRUE) {
+  
+  # Initialize columns for cardinal angles and directions
+  tree_f@data$car_ang <- 0
+  tree_f@data$car_dir <- "P"
+  
+  # Check if the tree is fully scanned; if not, create additional points from radii circle fits
+  if (length(which(table(tree_f@data$car_dir) < 2000)) > 3) {
+    circle_tree <- c()
+    
+    for (i in 1:nrow(radii)) {
+      # Add conditions for appending radii points to create missing tree points
+      if (i > 2 && (radii$R[i] > radii$R[i - 1] || 
+                    (is.na(radii$R[i - 1]) && radii$R[i] > 1.05 * radii$R[i - 2]) || 
+                    radii$R[i] > 1.2 * mean(radii$R[radii$Z > 1 & radii$Z < 1.3]))) {
+        next
+      }
+      
+      # Generate additional points using radii circles
+      new_points <- cbind(radii$Z[i], conicfit::calculateCircle(radii$X[i], radii$Y[i], radii$R[i], steps = 100))
+      colnames(new_points) <- c("Z_cor", "X_cor", "Y_cor")
+      circle_tree <- rbind(circle_tree, new_points)
+    }
+    
+    # Append new points to the original tree data
+    circle_tree <- as.data.frame(circle_tree)
+    tree_f@data <- rbind.fill(tree_f@data, circle_tree)
+  }
+  
+  # Calculate cardinal angles and directions for the combined data
+  for (radii_z in unique(radii$Z)) {
+    rz <- radii[which(radii$Z == radii_z), ]
+    cc_x <- rz$X
+    cc_y <- rz$Y
+    tree_f_sub <- tree_f@data[which(tree_f@data$Z_cor >= radii_z & tree_f@data$Z_cor < radii_z + steps), ]
+    
+    # Calculate angles relative to North
+    cardinal_angle <- apply(matrix(1:nrow(tree_f_sub)), 1, function(i) {
+      stempoint <- tree_f_sub[i, ]
+      branchv <- as.numeric(c((stempoint$X_cor - cc_x), (stempoint$Y_cor - cc_y)))
+      northv <- as.numeric(c(cc_x - cc_x, (cc_y + 100) - cc_y))
+      angle <- 180 * (angle2(branchv, northv)) / pi
+      ifelse(angle < 0, 360 - abs(angle), angle)
+    })
+    
+    # Map angles to cardinal directions
+    cardinal_dir <- d2c.2(cardinal_angle)
+    
+    # Update data frame with calculated angles and directions
+    tree_f@data$car_ang[which(tree_f@data$Z_cor >= radii_z & tree_f@data$Z_cor < radii_z + steps)] <- cardinal_angle
+    tree_f@data$car_dir[which(tree_f@data$Z_cor >= radii_z & tree_f@data$Z_cor < radii_z + steps)] <- cardinal_dir
+  }
+  
+  # Filter out rows without assigned directions
+  tree_f <- tree_f[(tree_f@data$car_dir != "P"), ]
+  tree_f@data$car_dir <- factor(tree_f@data$car_dir, levels = c("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"))
+  
+  # Optional 2D plotting of cardinal directions
+  if (plot2d) {
+    ggplot(tree_f@data, aes(x = X_cor, y = Y_cor, col = car_dir)) + 
+      geom_point() + 
+      ggtitle("Cardinal Directions") + 
+      scale_colour_viridis_d(option = "A") + 
+      theme_bw()
+    ggsave("Cardinal_direction.pdf", width = 10, height = 5)
+  }
+  
+  # Optional 3D plotting of cardinal directions
+  if (plot3d) {
+    
+    p <- plot_ly() %>%
+      add_trace(
+        x = tree_f@data$X_cor - mean(tree_f@data$X_cor),
+        y = tree_f@data$Y_cor - mean(tree_f@data$Y_cor),
+        z = tree_f@data$Z_cor,
+        type = "scatter3d",
+        mode = "markers",
+        color = tree_f@data$car_dir
+      ) %>%
+      layout(
+        scene = list(
+          xaxis = list(title = 'X (m)'),
+          zaxis = list(title = "Tree height (m)"),
+          yaxis = list(title = 'Y (m)'),
+          aspectmode = "manual",
+          aspectratio = list(z = 1, x = 0.2, y = 0.2)
+        )
+      )
+    saveWidget(partial_bundle(p), file = "Tree_Cardinal_Direction.html", selfcontained = TRUE)
+  }
+  
+  return(tree_f@data)
+}
