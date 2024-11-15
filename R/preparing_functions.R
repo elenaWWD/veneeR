@@ -471,3 +471,159 @@ veneer_card <- function(tree_f, radii, steps = 0.05, plot2d = TRUE, plot3d = TRU
   
   return(tree_f@data)
 }
+
+##### 5 fit splines along vertical partly point clouds: ####
+#' @title Veneer Spline Fitting and Visualization
+#' @description This function fits splines to tree coordinate data (X, Y) at different tree heights (Z) 
+#'              based on cardinal directions, visualizes the fitted splines in a 3D plot, and returns the predicted coordinates.
+#' @param tree_new A data frame with columns 'X_cor', 'Y_cor', 'Z_cor' for coordinates and 'car_dir' for cardinal direction.
+#' @return A data frame containing the predicted X, Y coordinates at different Z heights for each cardinal direction.
+#' @import plotly
+#' @import magma
+#' @import smooth
+#' @import htmlwidgets
+#' @examples
+#' # Example usage
+#' # tree_data <- data.frame(X_cor = ..., Y_cor = ..., Z_cor = ..., car_dir = ...)
+#' # result <- veneer_spline(tree_data)
+
+veneer_spline = function(tree_new) {
+  
+  # Initialize an empty list to store the predicted spline values
+  pred_all = c()
+  
+  # Generate a color palette based on the number of unique cardinal directions (car_dir)
+  pal = magma(length(unique(tree_new$car_dir)))
+  
+  # Center the coordinates by subtracting the mean of X and Y
+  tree_new$X_cor = tree_new$X_cor - mean(tree_new$X_cor)
+  tree_new$Y_cor = tree_new$Y_cor - mean(tree_new$Y_cor)
+  
+  # Loop through each unique cardinal direction (car_dir)
+  for (cd in unique(tree_new$car_dir)) {
+    
+    # Skip directions with fewer than 11 data points (necessary for spline fitting)
+    if(nrow(tree_new[which(tree_new$car_dir == cd),]) < 11) {
+      message(paste("Skipping direction:", cd, "due to insufficient data"))
+      next
+    }
+    
+    # Fit a spline to the X coordinates based on Z coordinates for this direction
+    s_X <- smooth.spline(tree_new$Z_cor[which(tree_new$car_dir == cd)], tree_new$X_cor[which(tree_new$car_dir == cd)], df = 15)
+    
+    # Fit a spline to the Y coordinates based on Z coordinates for this direction
+    s_Y <- smooth.spline(tree_new$Z_cor[which(tree_new$car_dir == cd)], tree_new$Y_cor[which(tree_new$car_dir == cd)], df = 15)
+    
+    # Generate a sequence of Z values to predict X and Y coordinates
+    z_here = seq(min(tree_new$Z_cor[which(tree_new$car_dir == cd)]), 
+                 max(tree_new$Z_cor[which(tree_new$car_dir == cd)]), 
+                 by = 0.01)
+    
+    # Predict the X and Y coordinates for the generated Z values using the splines
+    modelled_tree_x = predict(s_X, z_here)$y
+    modelled_tree_y = predict(s_Y, z_here)$y
+    
+    # Store the predicted coordinates along with the direction and height (z)
+    pred_1 = data.frame("cd" = cd, "z" = z_here, "x" = modelled_tree_x, "y" = modelled_tree_y)
+    
+    # Append the predictions for this direction to the overall list
+    pred_all = rbind(pred_all, pred_1)
+  }
+  
+  # Create a 3D plot using Plotly
+  p = plot_ly(colors = setNames(pal, unique(tree_new$car_dir))) %>%
+    layout(scene = list(
+      xaxis = list(title = 'X (m)'), 
+      zaxis = list(title = "Tree height (m)"),
+      yaxis = list(title = 'Y (m)'),
+      camera = list(eye = list(x = 1.25, y = 1.25, z = 1.25), center = list(x = 0, y = 0, z = 0))
+    )) %>%
+    layout(scene = list(aspectmode = "manual", aspectratio = list(z = 1, x = 0.2, y = 0.2)))
+  
+  # Loop through each unique direction in the predictions and add traces to the plot
+  for (cd in unique(pred_all$cd)) {
+    p <- p %>% add_trace(
+      x = pred_all$x[which(pred_all$cd == cd)], 
+      y = pred_all$y[which(pred_all$cd == cd)], 
+      z = pred_all$z[which(pred_all$cd == cd)], 
+      type = "scatter3d", 
+      mode = "markers", 
+      color = cd, 
+      hoverinfo = 'skip', 
+      opacity = 1, 
+      size = 1
+    )
+  }
+  
+  # Display the 3D plot
+  p
+  
+  # Save the plot as an interactive HTML file with the current site and TID for naming
+  saveWidget(p, paste(site, "_", TID, "_splines_3d_size1.html"), selfcontained = F, libdir = "lib")
+  
+  # Return the predicted values for all cardinal directions
+  return(pred_all)
+}
+
+##### 6 taper and volume: #####
+
+#' Estimate Taper and Volume of a Tree
+#'
+#' This function estimates the taper and volume of a tree based on RANSAC-fitted radii.
+#'
+#' @param radii A data frame containing tree radii, convex hull areas, circle areas, bark thickness, and other measurements.
+#' @return A list with taper information and volume calculations using various methods.
+#' @export
+
+
+taper_volume <- function(radii) {
+  # Validate input
+  if (!is.data.frame(radii)) stop("The input 'radii' must be a data frame.")
+  if (!all(c("Z", "R", "chull.area", "circle.area", "bark") %in% colnames(radii))) {
+    stop("The input 'radii' must contain columns: Z, R, chull.area, circle.area, and bark.")
+  }
+  
+  # Compute taper
+  lm_t2 <- lm(R * 200 ~ Z, data = radii[which(radii$Z > 1 & radii$Z < 0.98 * max(radii$Z)), ])
+  D1 <- mean(radii$R[which(radii$Z > 0.9 & radii$Z < 1.1)] * 200)  # Diameter at 1m
+  D2 <- mean(radii$R[which(radii$Z > 0.9 * max(radii$Z) & radii$Z < 0.98 * max(radii$Z))] * 200)  # Diameter at stem top
+  L <- max(radii$Z) - 1  # Length of the stem
+  taper_mean <- (D2 - D1) / L  # Taper value (cm/m)
+  
+  taper_method1 <- list(
+    mean_taper = round(taper_mean, 2),
+    lm_taper = round(lm_t2$coefficients[2], 2)
+  )
+  
+  # Adjust convex hull area where the hull is larger than the circle area
+  radii$chull.area[which(radii$proportion_circle_hull > 2)] <- radii$circle.area[which(radii$proportion_circle_hull > 2)]
+  
+  # Volume calculations
+  radii$chull.volume            <- radii$chull.area * 0.05  # Convex hull volume (per 5cm slice)
+  radii$circle.volume.nobark    <- (radii$R - (radii$bark / 2000))^2 * pi * 0.05  # Circle fit volume without bark
+  radii$circle.volume           <- radii$circle.area * 0.05
+  radii$circle.vol.bark.diff    <- (radii$circle.volume - radii$circle.volume.nobark) / radii$circle.volume
+  radii$chull.volume.nobark     <- radii$chull.volume - radii$chull.volume * radii$circle.vol.bark.diff
+  
+  # Summarize volumes
+  fm_polygon <- sum(radii$chull.volume.nobark, na.rm = TRUE)
+  fm_circle  <- sum(radii$circle.volume.nobark, na.rm = TRUE)
+  
+  # Conventional volume calculation
+  mid_diameter <- mean(radii$R[which(radii$Z > 0.45 * max(radii$Z) & radii$Z < 0.55 * max(radii$Z))]) * 2
+  mid_bark     <- mean(radii$bark[which(radii$Z > 0.45 * max(radii$Z) & radii$Z < 0.55 * max(radii$Z))]) / 1000
+  fm_tree      <- ((mid_diameter - mid_bark)^2) * pi / 4 * max(radii$Z)
+  
+  # Output
+  return(list(
+    taper = taper_method1,
+    volumes = list(
+      fm_polygon = round(fm_polygon, 4),
+      fm_circle = round(fm_circle, 4),
+      fm_conventional = round(fm_tree, 4)
+    ),
+    radii = radii  # Return updated radii with volume calculations
+  ))
+}
+
+##### 7 veneer roll final calculation #####
