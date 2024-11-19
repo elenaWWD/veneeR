@@ -21,14 +21,14 @@ d2c.2 <- function(x) {
   ifelse(x>360 | x<0,NA,card1[findInterval(x,upper,rightmost.closed = T)+1])
 }
 
-#color palette:
+# #color palette:
 col2mtl <- function(col) { paste(paste(c("Ka","Kd","Ks"),paste(col2rgb(col)/255, collapse = " ")) , collapse = "\n")}
-pal=viridis::magma(16,begin=.1)
-pal_shuffle = sample(pal)
-for (c in 1:13) {
-  writeLines(paste0("newmtl c",c))
-  writeLines(col2mtl(pal_shuffle[c]))
-}
+# pal=viridis::magma(16,begin=.1)
+# pal_shuffle = sample(pal)
+# for (c in 1:13) {
+#   writeLines(paste0("newmtl c",c))
+#   writeLines(col2mtl(pal_shuffle[c]))
+# }
 
 #export mesh:
 write_single_obj <- function(pol, file, mtl_name = "Material1", mtllib = "colors.mtl"){
@@ -83,5 +83,3 @@ write_obj <- function(pol, file, mtl_name = "Material1"){
 }
 
 
-library(roxygen2)
-roxygenize("C:/Users/Rosskopf/OneDrive/Desktop/veneer_test/veneeR")
