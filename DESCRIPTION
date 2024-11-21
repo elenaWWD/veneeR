@@ -12,7 +12,7 @@ Author: Elena Larysch [aut, cre],
   Zoe Schindler [aut]
 Maintainer: Elena Larysch <elena.larysch@wwd.uni-freiburg.de>
 Depends: R (>= 3.1.0)
-Suggests:  nlme, TreeLS, lidR, tidyr, plyr, dplyr, ggplot2
+Suggests:  nlme, TreeLS, lidR, tidyr, plyr, dplyr, ggplot2, CspStandSegmentation
 Description: A (one paragraph) description of what
   the package does and why it may be useful.
 License: GPL (>= 3)

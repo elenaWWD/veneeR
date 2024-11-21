@@ -51,22 +51,26 @@ final_tree_information = data.frame(
   mean_y = cbh_tree_loop$Y, 
   cbh = cbh_tree_loop$cbh)
 
+install.packages(c('devtools'))
+
+devtools::install_github('https://github.com/JulFrey/CspStandSegmentation')
+
 ```
 
-## Example of the workflow 
+## Example of the workflow
 
 ``` r
 #read in example point cloud: ########################################################################################### 
 tls_loop = lidR::readLAS(paste0(path_in, "1.las"))
 tls_all  = tls_loop [which(tls_loop@data$TreeID == TID),]
 
-#try it: ###########################################################################################
+#try it: ###############################################################
 tree_f   = veneer_noise (tree_las = tls_all)
 tree_f   = veneer_incli(tree_f = tree_f, plot=T)
 radii    = veneer_ransac(tree_f, steps = 0.05, species = "FaSy")
 tree_f   = veneer_outlier(radii=radii, tree_f = tree_f, steps=0.05)
 tree_new = veneer_card(tree_f = tree_f, radii = radii)
-#so, here we miss still the taper and volume calculations and the final veneer_function
+taper_vol_list = taper_volume(radii = radii)
 
+#so, here we miss still the final veneer_function
 ```
-

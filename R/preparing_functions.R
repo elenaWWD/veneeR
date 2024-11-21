@@ -22,7 +22,7 @@
 veneer_noise <- function(tree_las) {
   
   # Add geometry metrics to the LAS data if not already present
-  tls_all <- add_geometry(tree_las)
+  tls_all <- CspStandSegmentation::add_geometry(tree_las)
   
   # Apply filters: keep only points with high verticality and planarity, and remove classified noise
   tls_all <- tls_all %>%
