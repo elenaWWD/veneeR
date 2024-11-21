@@ -50,11 +50,6 @@ final_tree_information = data.frame(
   mean_x = cbh_tree_loop$X, 
   mean_y = cbh_tree_loop$Y, 
   cbh = cbh_tree_loop$cbh)
-
-install.packages(c('devtools'))
-
-devtools::install_github('https://github.com/JulFrey/CspStandSegmentation')
-
 ```
 
 ## Example of the workflow

@@ -21,6 +21,8 @@
 #' 
 veneer_noise <- function(tree_las) {
   
+  invisible(lapply(c('tidyr','CspStandSegmentation', 'lidR'), require, character.only = TRUE))
+  
   # Add geometry metrics to the LAS data if not already present
   tls_all <- CspStandSegmentation::add_geometry(tree_las)
   
