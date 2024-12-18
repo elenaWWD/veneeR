@@ -1,6 +1,6 @@
 # veneeR
 
-## This package was developed to denoise stem data and develop veneer rolls, optimised for maximal wood usage, in the stem until crown base height.
+## This package was developed to denoise stem data and develop veneer rolls, optimised for maximal veneer roll usage, in the stem until crown base height.
 
 ## 
 
