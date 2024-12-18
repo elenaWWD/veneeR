@@ -5,11 +5,11 @@ Title: Developing and analysing timber veneer rolls from TLS based 3D point clou
 Version: 0.1.0
 Authors@R: c(person("Elena", "Larysch", role = c("aut", "cre"),
                      email = "elena.larysch@wwd.uni-freiburg.de"),
-              person("Julian", "Frey", role = "aut"),
+              person("Julian", "Frey", role = "ctb"),
               person("Zoe", "Schindler", role = "ctb"))
 Author: Elena Larysch [aut, cre],
-  Julian Frey [aut],
-  Zoe Schindler [aut]
+  Julian Frey [ctb],
+  Zoe Schindler [ctb]
 Maintainer: Elena Larysch <elena.larysch@wwd.uni-freiburg.de>
 Depends: R (>= 3.1.0)
 Suggests:  nlme, TreeLS, lidR, tidyr, plyr, dplyr, ggplot2, CspStandSegmentation
