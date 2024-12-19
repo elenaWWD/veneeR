@@ -67,5 +67,5 @@ tree_f   = veneer_outlier(radii=radii, tree_f = tree_f, steps=0.05)
 tree_new = veneer_card(tree_f = tree_f, radii = radii)
 taper_vol_list = taper_volume(radii = radii)
 
-#so, here we miss still the final veneer_function
+#the final veneer function will be here soon.
 ```
