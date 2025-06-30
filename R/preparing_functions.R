@@ -410,26 +410,26 @@ veneer_card <- function(tree_f, radii, steps = 0.05, plot_it_2d = TRUE, plot_it_
   }
   
   # Optional 3D plotting of cardinal directions
-  # if (plot_it_3d) {
-  #   p <-  plotly::plot_ly(colors = setNames(pal, unique(tree_new$car_dir)))  %>%
-  #     plotly::add_trace(
-  #       x = tree_f@data$X_cor - mean(tree_f@data$X_cor),
-  #       y = tree_f@data$Y_cor - mean(tree_f@data$Y_cor),
-  #       z = tree_f@data$Z_cor,
-  #       type = "scatter3d",
-  #       mode = "markers",
-  #       color = tree_f@data$car_dir
-  #     ) %>%
-  #     plotly::layout(
-  #       scene = list(
-  #         xaxis = list(title = "X (m)"),
-  #         zaxis = list(title = "Tree height (m)"),
-  #         yaxis = list(title = 'Y (m)'),
-  #         aspectmode = "manual",
-  #         aspectratio = list(z = 1, x = 0.2, y = 0.2)))
-  #   
-  #   htmlwidgets::saveWidget(plotly::partial_bundle(p), file = "Tree_Cardinal_Direction.html", selfcontained = TRUE)
-  # }
+  if (plot_it_3d) {
+    p <-  plotly::plot_ly(colors = setNames(viridis::magma(30), unique(tree_f@data$car_dir)))  %>%
+      plotly::add_trace(
+        x = tree_f@data$X_cor - mean(tree_f@data$X_cor),
+        y = tree_f@data$Y_cor - mean(tree_f@data$Y_cor),
+        z = tree_f@data$Z_cor,
+        type = "scatter3d",
+        mode = "markers",
+        color = tree_f@data$car_dir
+      ) %>%
+      plotly::layout(
+        scene = list(
+          xaxis = list(title = "X (m)"),
+          zaxis = list(title = "Tree height (m)"),
+          yaxis = list(title = 'Y (m)'),
+          aspectmode = "manual",
+          aspectratio = list(z = 1, x = 0.2, y = 0.2)))
+
+    htmlwidgets::saveWidget(plotly::partial_bundle(p), file = "Tree_Cardinal_Direction.html", selfcontained = TRUE)
+  }
   
   return(tree_f@data)
 }
@@ -493,18 +493,18 @@ veneer_spline = function(tree_new) {
   }
   
   # Create a 3D plot using Plotly
-  p = plot_ly(colors = setNames(pal, unique(tree_new$car_dir))) %>%
-    layout(scene = list(
+  p = plotly::plot_ly(colors = setNames(viridis::magma(30), unique(tree_new$car_dir))) %>%
+    plotly::layout(scene = list(
       xaxis = list(title = 'X (m)'), 
       zaxis = list(title = "Tree height (m)"),
       yaxis = list(title = 'Y (m)'),
       camera = list(eye = list(x = 1.25, y = 1.25, z = 1.25), center = list(x = 0, y = 0, z = 0))
     )) %>%
-    layout(scene = list(aspectmode = "manual", aspectratio = list(z = 1, x = 0.2, y = 0.2)))
+    plotly::layout(scene = list(aspectmode = "manual", aspectratio = list(z = 1, x = 0.2, y = 0.2)))
   
   # Loop through each unique direction in the predictions and add traces to the plot
   for (cd in unique(pred_all$cd)) {
-    p <- p %>% add_trace(
+    p <- p %>% plotly::add_trace(
       x = pred_all$x[which(pred_all$cd == cd)], 
       y = pred_all$y[which(pred_all$cd == cd)], 
       z = pred_all$z[which(pred_all$cd == cd)], 
