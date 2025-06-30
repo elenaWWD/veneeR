@@ -30,11 +30,15 @@ analyse_veneer_potential(
 
 \item{TID}{Tree ID to filter TLS data.}
 
-\item{x_move, }{y_move Numeric values to reposition TLS data.}
+\item{x_move}{Numeric x coordinate to re-position TLS data.}
+
+\item{y_move}{Numeric y coordinate to re-position TLS data.}
 
 \item{stump}{Numeric height of the stump (default: 0.3 m).}
 
-\item{length1, }{length2 Numeric lengths (in meters) for possible veneer log cuts.}
+\item{length1}{Numeric lengths (in meters) for possible veneer log cuts.}
+
+\item{length2}{Numeric lengths (in meters) for possible veneer log cuts.}
 
 \item{pal}{Optional vector of ggplot2 color codes.}
 

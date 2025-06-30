@@ -520,7 +520,7 @@ veneer_spline = function(tree_new) {
   # Display the 3D plot
   p
   
-  # Save the plot as an interactive HTML file with the current site and TID for naming
+  # Save the plot as an interactive HTML file with the current TID for naming
   htmlwidgets::saveWidget(p, paste( TID, "_splines_3d_size1.html"), selfcontained = F, libdir = "lib")
   
   # Return the predicted values for all cardinal directions
@@ -602,7 +602,6 @@ taper_volume <- function(radii) {
 #' @param TID Tree ID to filter TLS data.
 #' @param x_move Numeric x coordinate to re-position TLS data.
 #' @param y_move Numeric y coordinate to re-position TLS data.
-#' @param site Character string for site name (used in file naming).
 #' @param stump Numeric height of the stump (default: 0.3 m).
 #' @param length1 Numeric lengths (in meters) for possible veneer log cuts. 
 #' @param length2 Numeric lengths (in meters) for possible veneer log cuts.
@@ -631,7 +630,7 @@ analyse_veneer_potential <- function(pred_all, tls_all_withcrown, final_tree_inf
                                      taper_mean = NA, lm_t2 = list(coefficients = NA)) {
 
   
-  invisible(lapply(c("foreach","parallel","sf", "dplyr" , "geometry", "conicfit", "rgeos", 'grDevices','graphics', 'ggplot2'), require, character.only = TRUE))
+  invisible(lapply(c("foreach","parallel", "doParallel","alphashape3d", "sf", "dplyr" , "geometry", "conicfit", "rgeos", 'grDevices','graphics', 'ggplot2'), require, character.only = TRUE))
   
   
   #Remaining roll has a diameter of 95mm / 9.5 cm
@@ -971,7 +970,7 @@ analyse_veneer_potential <- function(pred_all, tls_all_withcrown, final_tree_inf
   
   best_combination = ci[which(ci$share_longterm_c == max(ci$share_longterm_c)),]
   best_combination$remaining_stem_disk_length = all_combinations[[unique(best_combination$combination)]]$remaining_length
-  write.table(best_combination, paste0(site, "_", TID, "_bestcombi_veneer.csv"), col.names=T, row.names=F, dec=".", sep=";")
+  write.table(best_combination, paste0(TID, "_bestcombi_veneer.csv"), col.names=T, row.names=F, dec=".", sep=";")
   
   ggplot(data=best_combination) + geom_col( aes(x=base_z, y=100*c(optimal_radius-true_radius)/true_radius), fill=pal[3]) +  ylab("Improvement Radius (%)") + xlab("Cylinder base height (m)") + theme_minimal()+ ggtitle("Relative change in radius after improvement") 
   ggplot(data=best_combination) + geom_col( aes(x=c, y=100*c(optimal_radius-true_radius)/true_radius), fill=pal[3]) +  ylab("Improvement Roll Radius (%)") + xlab("Cylinder number") + theme_minimal()
@@ -980,7 +979,7 @@ analyse_veneer_potential <- function(pred_all, tls_all_withcrown, final_tree_inf
   
   worst_combination = ci[which(ci$share_longterm_c == min(ci$share_longterm_c)),]
   worst_combination$remaining_stem_disk_length = all_combinations[[unique(worst_combination$combination)]]$remaining_length
-  write.table(worst_combination, paste0(site, "_", TID, "_worstcombi_veneer.csv"), col.names=T, row.names=F, dec=".", sep=";")
+  write.table(worst_combination, paste0(TID, "_worstcombi_veneer.csv"), col.names=T, row.names=F, dec=".", sep=";")
   
   
   ##### get final information per tree together ####
