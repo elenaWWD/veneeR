@@ -451,8 +451,7 @@ veneer_card <- function(tree_f, radii, steps = 0.05, plot2d = TRUE, plot3d = TRU
   
   # Optional 3D plotting of cardinal directions
   if (plot3d) {
-    
-    p <- plot_ly() %>%
+    p <-  plotly::plot_ly() %>%
       add_trace(
         x = tree_f@data$X_cor - mean(tree_f@data$X_cor),
         y = tree_f@data$Y_cor - mean(tree_f@data$Y_cor),
@@ -463,13 +462,12 @@ veneer_card <- function(tree_f, radii, steps = 0.05, plot2d = TRUE, plot3d = TRU
       ) %>%
       layout(
         scene = list(
-          xaxis = list(title = 'X (m)'),
+          xaxis = list(title = "X (m)"),
           zaxis = list(title = "Tree height (m)"),
           yaxis = list(title = 'Y (m)'),
           aspectmode = "manual",
-          aspectratio = list(z = 1, x = 0.2, y = 0.2)
-        )
-      )
+          aspectratio = list(z = 1, x = 0.2, y = 0.2)))
+    
     saveWidget(partial_bundle(p), file = "Tree_Cardinal_Direction.html", selfcontained = TRUE)
   }
   
