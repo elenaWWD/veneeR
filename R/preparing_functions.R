@@ -341,7 +341,7 @@ veneer_outlier <- function(radii, tree_f, steps) {
 #' }
 #' 
 
-veneer_card <- function(tree_f, radii, steps = 0.05, plot2d = TRUE, plot3d = TRUE) {
+veneer_card <- function(tree_f, radii, steps = 0.05, plot_it_2d = TRUE, plot_it_3d = TRUE) {
   
   # Initialize columns for cardinal angles and directions
   tree_f@data$car_ang <- 0
@@ -399,7 +399,7 @@ veneer_card <- function(tree_f, radii, steps = 0.05, plot2d = TRUE, plot3d = TRU
   tree_f@data$car_dir <- factor(tree_f@data$car_dir, levels = c("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"))
   
   # Optional 2D plotting of cardinal directions
-  if (plot2d) {
+  if (plot_it_2d) {
     ggplot(tree_f@data, aes(x = X_cor, y = Y_cor, col = car_dir)) + 
       geom_point() + 
       ggtitle("Cardinal Directions") + 
@@ -409,9 +409,9 @@ veneer_card <- function(tree_f, radii, steps = 0.05, plot2d = TRUE, plot3d = TRU
   }
   
   # Optional 3D plotting of cardinal directions
-  if (plot3d) {
+  if (plot_it_3d) {
     p <-  plotly::plot_ly() %>%
-      add_trace(
+      plotly::add_trace(
         x = tree_f@data$X_cor - mean(tree_f@data$X_cor),
         y = tree_f@data$Y_cor - mean(tree_f@data$Y_cor),
         z = tree_f@data$Z_cor,
@@ -419,7 +419,7 @@ veneer_card <- function(tree_f, radii, steps = 0.05, plot2d = TRUE, plot3d = TRU
         mode = "markers",
         color = tree_f@data$car_dir
       ) %>%
-      layout(
+      plotly::layout(
         scene = list(
           xaxis = list(title = "X (m)"),
           zaxis = list(title = "Tree height (m)"),
