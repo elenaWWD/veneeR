@@ -342,6 +342,7 @@ veneer_outlier <- function(radii, tree_f, steps) {
 #' 
 
 veneer_card <- function(tree_f, radii, steps = 0.05, plot_it_2d = TRUE, plot_it_3d = TRUE) {
+  invisible(lapply(c('plotly', 'ggplot2'), require, character.only = TRUE))
   
   # Initialize columns for cardinal angles and directions
   tree_f@data$car_ang <- 0
