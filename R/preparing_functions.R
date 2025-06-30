@@ -825,7 +825,7 @@ analyse_veneer_potential <- function(pred_all, tls_all_withcrown, final_tree_inf
     veneer_0.3 = veneer_all [which(veneer_all$z >stump),]
     cutting_lengths = as.numeric(all_combinations[[b]]$sequence)
     cutting_heights = c(stump, stump + cumsum(cutting_lengths)) #m
-    reststück = as.numeric(all_combinations[[b]]$remaining_length) #m
+    restroll = as.numeric(all_combinations[[b]]$remaining_length) #m
     
     veneer_0.3$group <- cut(veneer_0.3$z, breaks = c(-Inf, cutting_heights, Inf),  right = FALSE)
     
@@ -844,7 +844,7 @@ analyse_veneer_potential <- function(pred_all, tls_all_withcrown, final_tree_inf
     
     if( nrow(cylinder_info) == length(cutting_heights) )  {
       cylinder_info$cutting_heights =   cutting_heights 
-      cylinder_info$height = c(cutting_lengths, reststück) 
+      cylinder_info$height = c(cutting_lengths, restroll) 
     }
     
     if( nrow(cylinder_info) != length(cutting_heights) )  {
