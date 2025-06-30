@@ -468,7 +468,7 @@ veneer_card <- function(tree_f, radii, steps = 0.05, plot2d = TRUE, plot3d = TRU
           aspectmode = "manual",
           aspectratio = list(z = 1, x = 0.2, y = 0.2)))
     
-    saveWidget(partial_bundle(p), file = "Tree_Cardinal_Direction.html", selfcontained = TRUE)
+    htmlwidgets::saveWidget(partial_bundle(p), file = "Tree_Cardinal_Direction.html", selfcontained = TRUE)
   }
   
   return(tree_f@data)
