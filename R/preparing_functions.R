@@ -69,6 +69,7 @@ veneer_noise <- function(tree_las) {
 
 
 veneer_incli <- function(tree_f, plot = TRUE) {
+  invisible(lapply(c('ggplot2','viridis', 'ggpubr'), require, character.only = TRUE))
   
   # Extract and normalize point coordinates
   points <- as.matrix(tree_f@data[, c("X", "Y", "Z")])
@@ -628,3 +629,4 @@ taper_volume <- function(radii) {
   ))
 }
 
+##### 7 the important function: #####
