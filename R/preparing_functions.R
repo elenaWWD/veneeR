@@ -600,10 +600,12 @@ taper_volume <- function(radii) {
 #' @param tls_all_withcrown A LAS object containing TLS points with tree crowns.
 #' @param final_tree_information A data.frame with existing metadata on the tree.
 #' @param TID Tree ID to filter TLS data.
-#' @param x_move, y_move Numeric values to reposition TLS data.
+#' @param x_move Numeric x coordinate to re-position TLS data.
+#' @param y_move Numeric y coordinate to re-position TLS data.
 #' @param site Character string for site name (used in file naming).
 #' @param stump Numeric height of the stump (default: 0.3 m).
-#' @param length1, length2 Numeric lengths (in meters) for possible veneer log cuts.
+#' @param length1 Numeric lengths (in meters) for possible veneer log cuts. 
+#' @param length2 Numeric lengths (in meters) for possible veneer log cuts.
 #' @param pal Optional vector of ggplot2 color codes.
 #' @param fm_tree,fm_circle Optional volume estimates for comparison.
 #' @param taper_mean, lm_t2 Optional taper model results.
@@ -630,27 +632,25 @@ analyse_veneer_potential <- function(pred_all, tls_all_withcrown, final_tree_inf
 
   #Remaining roll has a diameter of 95mm / 9.5 cm
   #Median diameter (German: Mittendurchmesser) > 30 cm 
-  length1 = 1.8288 #(m) length 1 6ft or 1.85m
-  length2 = 2.4384 #(m) length 2 8ft or 2.45m
+  #length1 = 1.8288 #(m) length 1 6ft or 1.85m
+  #length2 = 2.4384 #(m) length 2 8ft or 2.45m
   max_length = max(tree_new$Z_cor, na.rm=T) #max. Stem length (m)
-  stump = 0.3
+  #stump = 0.3
   
   if (c(max(pred_all$z)-min(pred_all$z)-.3) < length1){
     write.table(final_tree_information, "final_tree_information.csv", col.names=T, row.names=F)
-    tls_with_crown = as.data.frame(tls_all_withcrown@data [which(tls_all_withcrown@data$TreeID == TID),])
     tls_with_crown$X = tls_with_crown$X - x_move
     tls_with_crown$Y = tls_with_crown$Y - y_move
-    writeLAS(LAS(tls_with_crown), paste0( "cylinder_mesh/", TID, "_tls_with_crown_grey.las"))
+    writeLAS(LAS(tls_with_crown), paste0(TID, "_tls_with_crown_grey.las"))
   }
   
   if (c(max(pred_all$z)-min(pred_all$z)-.3) < length1) next
   
   if (final_tree_information$mitten_diameter*2 < .3){
     write.table(final_tree_information, "final_tree_information.csv", col.names=T, row.names=F)
-    tls_with_crown = as.data.frame(tls_all_withcrown@data [which(tls_all_withcrown@data$TreeID == TID),])
     tls_with_crown$X = tls_with_crown$X - x_move
     tls_with_crown$Y = tls_with_crown$Y - y_move
-    writeLAS(LAS(tls_with_crown), paste0("cylinder_mesh/", TID, "_tls_with_crown_grey.las"))
+    writeLAS(LAS(tls_with_crown), paste0(TID, "_tls_with_crown_grey.las"))
   }
   
   if (final_tree_information$mitten_diameter*2 < .3) next
