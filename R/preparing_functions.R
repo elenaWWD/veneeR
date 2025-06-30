@@ -630,12 +630,18 @@ analyse_veneer_potential <- function(pred_all, tls_all_withcrown, final_tree_inf
                                      pal = magma(16), fm_tree = NA, fm_circle = NA,
                                      taper_mean = NA, lm_t2 = list(coefficients = NA)) {
 
+  
+  invisible(lapply(c("foreach","parallel","sf", "dplyr" , "geometry", "conicfit", "rgeos", 'grDevices','graphics', 'ggplot2'), require, character.only = TRUE))
+  
+  
   #Remaining roll has a diameter of 95mm / 9.5 cm
   #Median diameter (German: Mittendurchmesser) > 30 cm 
   #length1 = 1.8288 #(m) length 1 6ft or 1.85m
   #length2 = 2.4384 #(m) length 2 8ft or 2.45m
   max_length = max(tree_new$Z_cor, na.rm=T) #max. Stem length (m)
   #stump = 0.3
+  
+  
   
   if (c(max(pred_all$z)-min(pred_all$z)-.3) < length1){
     write.table(final_tree_information, "final_tree_information.csv", col.names=T, row.names=F)
