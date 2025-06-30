@@ -67,6 +67,38 @@ tls_all  = tls_loop [which(tls_loop@data$TreeID == TID),]
 tree_f   = veneer_noise (tree_las = tls_all)
 tree_f   = veneer_incli(tree_f = tree_f, plot=T)
 radii    = veneer_ransac(tree_f, steps = 0.05, species = "FaSy")
+
+#fill in the final tree information based on the ransac results: 
+
+#get the radius at breast height:
+final_tree_information$radius_ransac_at_bh  = round(mean(radii$R [which(radii$Z > 1 & radii$Z < 1.5)], na.rm=T),4)
+# get the radius at crown base height:
+final_tree_information$radius_ransac_at_cbh = round(mean(radii$R [which(radii$Z > 0.9*final_tree_information$cbh)], na.rm=T),4)
+# get the mitten diameter: 
+final_tree_information$mitten_diameter = mean(radii$R [which (radii$Z > 0.9* ((max(radii$Z)- min(radii$Z))/2) & radii$Z< 1.1* ((max(radii$Z)- min(radii$Z))/2))], na.rm=T)
+# get (if possible based on the tree height) diameter along the stem height:
+if(final_tree_information$tree_height>6)  final_tree_information$radius_ransac_at_5  = round(mean(radii$R [which(radii$Z > 4.5 & radii$Z < 5.5)], na.rm=T),4)
+if(final_tree_information$tree_height>10) final_tree_information$radius_ransac_at_10 = round(mean(radii$R [which(radii$Z > 9.5 & radii$Z < 10.5)], na.rm=T),4)
+if(final_tree_information$tree_height>15) final_tree_information$radius_ransac_at_15 = round(mean(radii$R [which(radii$Z > 14.5 & radii$Z < 15.5)], na.rm=T),4)
+if(final_tree_information$tree_height>20) final_tree_information$radius_ransac_at_20 = round(mean(radii$R [which(radii$Z > 19.5 & radii$Z < 20.5)], na.rm=T),4)
+
+#move to next tree and safe tree dimensional information, if tree is too thin or stem length lower the minimum required stem length for Pollmeier: 
+if(is.na(final_tree_information$radius_ransac_at_bh) ){ 
+rm(tree_f, tls_all) 
+write.csv(final_tree_information, "final_tree_information.csv")
+gc() #make space for new calc
+}
+if(is.na(final_tree_information$radius_ransac_at_bh) ) next
+if(c(final_tree_information$cbh - 0.3)  <1.8288 ) {
+  rm(tree_f, tls_all)
+  write.csv(final_tree_information, "final_tree_information.csv")
+  gc()
+}
+if(c(final_tree_information$cbh - 0.3)  <1.8288 ) next #move to the next tree but keep in information table.
+
+
+
+
 tree_f   = veneer_outlier(radii=radii, tree_f = tree_f, steps=0.05)
 tree_new = veneer_card(tree_f = tree_f, radii = radii)
 taper_vol_list = taper_volume(radii = radii)
