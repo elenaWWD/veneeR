@@ -74,7 +74,7 @@ tree_new_spline = veneer_spline(tree_new)
 
 #the final veneer function: ##############################################################################################
 
-tls_all_withcrown = lidR::readLAS(paste0( "path_in, "test_1_with_crown.las"))
+tls_all_withcrown = lidR::readLAS(paste0(path_in, "test_1_with_crown.las"))
 veneer_rolls = analyse_veneer_potential(pred_all = tree_new)
 
 ```
