@@ -19,6 +19,10 @@ library(veneeR)
 The package is written to process the 3D point cloud .las file in a step-wise manner. It starts with reading in the .las file and the mandatory information on crown base height.
 
 ``` r
+
+#create a input folder:
+path_in = NA
+
 #data path: 
 folder_out = "veneer_results"
 
@@ -59,13 +63,18 @@ final_tree_information = data.frame(
 tls_loop = lidR::readLAS(paste0(path_in, "1.las"))
 tls_all  = tls_loop [which(tls_loop@data$TreeID == TID),]
 
-#try it: ###############################################################
+#try it: ###############################################################################################################
 tree_f   = veneer_noise (tree_las = tls_all)
 tree_f   = veneer_incli(tree_f = tree_f, plot=T)
 radii    = veneer_ransac(tree_f, steps = 0.05, species = "FaSy")
 tree_f   = veneer_outlier(radii=radii, tree_f = tree_f, steps=0.05)
 tree_new = veneer_card(tree_f = tree_f, radii = radii)
 taper_vol_list = taper_volume(radii = radii)
+tree_new_spline = veneer_spline(tree_new)
 
-#the final veneer function will be here soon.
+#the final veneer function: ##############################################################################################
+
+tls_all_withcrown = lidR::readLAS(paste0(path_in, "test_1_with_crown.las"))
+veneer_rolls = analyse_veneer_potential(pred_all = tree_new)
+
 ```
