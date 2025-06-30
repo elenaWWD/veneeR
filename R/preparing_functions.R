@@ -630,7 +630,7 @@ analyse_veneer_potential <- function(pred_all, tls_all_withcrown, final_tree_inf
                                      taper_mean = NA, lm_t2 = list(coefficients = NA)) {
 
   
-  invisible(lapply(c("foreach","parallel", "doParallel","alphashape3d", "sf", "dplyr" , "geometry", "conicfit", "rgeos", 'grDevices','graphics', 'ggplot2'), require, character.only = TRUE))
+  invisible(lapply(c("foreach","parallel", "viridis", "doParallel","alphashape3d", "sf", "dplyr" , "geometry", "conicfit", "rgeos", 'grDevices','graphics', 'ggplot2'), require, character.only = TRUE))
   
   
   #Remaining roll has a diameter of 95mm / 9.5 cm
