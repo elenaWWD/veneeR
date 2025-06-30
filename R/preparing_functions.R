@@ -521,7 +521,7 @@ veneer_spline = function(tree_new) {
   p
   
   # Save the plot as an interactive HTML file with the current site and TID for naming
-  saveWidget(p, paste(site, "_", TID, "_splines_3d_size1.html"), selfcontained = F, libdir = "lib")
+  htmlwidgets::saveWidget(p, paste( TID, "_splines_3d_size1.html"), selfcontained = F, libdir = "lib")
   
   # Return the predicted values for all cardinal directions
   return(pred_all)
