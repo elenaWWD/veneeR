@@ -156,6 +156,7 @@ veneer_incli <- function(tree_f, plot = TRUE) {
 #' @import sp
 
 veneer_ransac <- function(tree_f, steps, species) {
+  invisible(lapply(c('TreeLS','sp', 'ggplot2'), require, character.only = TRUE))
   
   # Initialize empty data frame to store results
   radii <- data.frame(
