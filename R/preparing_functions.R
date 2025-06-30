@@ -183,7 +183,7 @@ veneer_ransac <- function(tree_f, steps, species) {
       disc@data$Z <- disc@data$Z_cor
       
       # Fit circle to the current slice using RANSAC
-      circ <- shapeFit(disc, shape = "circle", algorithm = "ransac")
+      circ <- TreeLS::shapeFit(disc, shape = "circle", algorithm = "ransac")
       
       if (!is.na(circ[1, 3])) {
         
