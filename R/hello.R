@@ -82,4 +82,45 @@ write_obj <- function(pol, file, mtl_name = "Material1"){
   
 }
 
+# Helper function to remove outliers based on boxplot stats
+remove_outliers <- function(disc_df) {
+  # Outlier removal for X and Y
+  out_x <- boxplot.stats(disc_df$X)$out
+  out_x_ind <- which(disc_df$X %in% out_x)
+  disc_o <- if (length(out_x_ind) != 0) disc_df[-out_x_ind, ] else disc_df
+  
+  out_y <- boxplot.stats(disc_o$Y)$out
+  out_y_ind <- which(disc_o$Y %in% out_y)
+  if (length(out_y_ind) != 0) disc_o <- disc_o[-out_y_ind, ]
+  
+  return(disc_o)
+}
+
+# Helper function to update the final tree information
+update_tree_info <- function(radii, species) {
+  final_tree_information$radius_ransac_at_bh <- round(mean(radii$R[radii$Z > 1 & radii$Z < 1.5], na.rm = TRUE), 4)
+  final_tree_information$radius_ransac_at_cbh <- round(mean(radii$R[radii$Z > 0.9 * final_tree_information$cbh], na.rm = TRUE), 4)
+  
+  # Mitten diameter calculation
+  final_tree_information$mitten_diameter <- mean(radii$R[radii$Z > 0.9 * ((max(radii$Z) - min(radii$Z)) / 2) & radii$Z < 1.1 * ((max(radii$Z) - min(radii$Z)) / 2)], na.rm = TRUE)
+  
+  # Radius at various stem heights
+  if (final_tree_information$tree_height > 6) final_tree_information$radius_ransac_at_5 <- round(mean(radii$R[radii$Z > 4.5 & radii$Z < 5.5], na.rm = TRUE), 4)
+  if (final_tree_information$tree_height > 10) final_tree_information$radius_ransac_at_10 <- round(mean(radii$R[radii$Z > 9.5 & radii$Z < 10.5], na.rm = TRUE), 4)
+  if (final_tree_information$tree_height > 15) final_tree_information$radius_ransac_at_15 <- round(mean(radii$R[radii$Z > 14.5 & radii$Z < 15.5], na.rm = TRUE), 4)
+  if (final_tree_information$tree_height > 20) final_tree_information$radius_ransac_at_20 <- round(mean(radii$R[radii$Z > 19.5 & radii$Z < 20.5], na.rm = TRUE), 4)
+  
+  # Clean up tree if not valid
+  if (is.na(final_tree_information$radius_ransac_at_bh)) {
+    rm(tree_f, tls_all)
+    write.csv(final_tree_information, "final_tree_information.csv")
+    gc()  # Clean up memory
+  }
+  if (is.na(final_tree_information$radius_ransac_at_bh)) next
+  if ((final_tree_information$cbh - 0.3) < 1.8288) {
+    rm(tree_f, tls_all)
+    write.csv(final_tree_information, "final_tree_information.csv")
+    gc()
+  }
+}
 
