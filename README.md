@@ -1,10 +1,16 @@
 # veneeR
 
+<img align="right" width="259" height="300" alt="veneer" src="https://github.com/user-attachments/assets/a681c027-a940-46fe-bb00-af83a00982c5" />
+</br>
+</p>
+
+
 ## This package was developed to denoise stem data and develop veneer rolls, optimised for maximal veneer roll usage, in the stem until crown base height.
 
 ## 
 
 ## Get it running
+
 
 Please install the package from github and load the required packages.
 
