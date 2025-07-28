@@ -7,6 +7,9 @@
 
 ## This package was developed to denoise stem data and develop veneer rolls, optimised for maximal veneer roll usage, in the stem until crown base height.
 
+Have a look at our article for the explanation of the workflow and the veneer estimation results of the pilot study: Larysch, E., Frey, J., Schindler, Z. et al. Quantifying and mapping the ready-to-use veneer volume of European beech trees based on terrestrial laser scanning data. Eur J Forest Res (2025). https://doi.org/10.1007/s10342-025-01796-z
+
+
 ## 
 
 ## Get it running
